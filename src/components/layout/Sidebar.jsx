@@ -1,12 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { X, LogOut } from 'lucide-react';
 import { NAV_ITEMS } from '../../constants/nav.js';
 import { useAuth } from '../../context/AuthContext.jsx';
+import ConfirmModal from '../ui/ConfirmModal.jsx';
 import Logo from './Logo.jsx';
 
 const Sidebar = ({ mobileOpen, onCloseMobile }) => {
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+
   const linkClass = ({ isActive }) =>
     `flex items-center gap-3 rounded-lg px-3.5 py-2.5 text-sm font-medium transition-colors ${
       isActive ? 'bg-white/10 text-white' : 'text-core-300 hover:bg-white/5 hover:text-white'
@@ -35,11 +38,12 @@ const Sidebar = ({ mobileOpen, onCloseMobile }) => {
       <div className="border-t border-white/10 px-4 py-3.5 flex items-center justify-between">
         <span className="text-xs text-core-400">Royalty v1.0</span>
         <button
-          onClick={logout}
-          className="flex items-center gap-1 text-xs font-medium text-red-400 hover:text-red-300 transition-colors"
+          type="button"
+          onClick={() => setShowLogoutConfirm(true)}
+          className="flex items-center gap-1.5 text-xs font-medium text-red-400 hover:text-red-300 transition-colors"
           title="Sign out"
         >
-          <LogOut size={13} />
+          <LogOut size={14} />
           <span>Sign out</span>
         </button>
       </div>
@@ -58,6 +62,28 @@ const Sidebar = ({ mobileOpen, onCloseMobile }) => {
           <div className="relative z-10 h-full w-64">{content}</div>
         </div>
       )}
+
+      {/* Logout Confirmation Modal */}
+      <ConfirmModal
+        open={showLogoutConfirm}
+        onClose={() => setShowLogoutConfirm(false)}
+        onConfirm={() => {
+          setShowLogoutConfirm(false);
+          logout();
+        }}
+        variant="danger"
+        title="Confirm Logout"
+        message="Are you sure you want to sign out of the Royalty Charging admin portal?"
+        confirmText="Sign Out"
+        details={
+          user && (
+            <div className="flex justify-between">
+              <span className="text-core-500">Active Account:</span>
+              <span className="font-semibold text-core-800">{user.username || user.name || 'Admin'}</span>
+            </div>
+          )
+        }
+      />
     </>
   );
 };
