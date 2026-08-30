@@ -7,6 +7,7 @@ import NewCharging from './pages/NewCharging.jsx';
 import ChargingRecords from './pages/ChargingRecords.jsx';
 import CustomerDetails from './pages/CustomerDetails.jsx';
 import Pricing from './pages/Pricing.jsx';
+import Settings from './pages/Settings.jsx';
 import NotFound from './pages/NotFound.jsx';
 
 const App = () => (
@@ -52,6 +53,14 @@ const App = () => (
       element={
         <ProtectedRoute>
           <Pricing />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/settings"
+      element={
+        <ProtectedRoute>
+          <Settings />
         </ProtectedRoute>
       }
     />

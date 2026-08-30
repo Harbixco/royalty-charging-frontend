@@ -49,7 +49,7 @@ const Dashboard = () => {
               <StatCard label="Total records" value={stats.totalRecords} icon={Layers} tone="core" />
               <StatCard label="Total revenue" value={formatNaira(stats.totalRevenue)} icon={Wallet} tone="core" />
               <StatCard label="Currently charging" value={stats.activeCharging} icon={Zap} tone="spark" />
-              <StatCard label="Completed charges" value={stats.completedRecords} icon={CheckCircle2} tone="success" />
+              <StatCard label="Received" value={stats.completedRecords} icon={CheckCircle2} tone="success" />
               <StatCard label="Today's revenue" value={formatNaira(stats.todayRevenue)} icon={CalendarCheck} tone="spark" />
               <StatCard label="Today's customers" value={stats.todayRecords} icon={Users} tone="core" />
             </div>

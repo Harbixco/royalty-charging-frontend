@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { Search, CheckCircle2, Zap } from 'lucide-react';
 import Button from '../ui/Button.jsx';
 import Badge from '../ui/Badge.jsx';
-import ConfirmModal from '../ui/ConfirmModal.jsx';
+import { PaymentBadge } from '../charging/StatusBadge.jsx';
+import CompleteChargingModal from '../charging/CompleteChargingModal.jsx';
 import { chargingApi } from '../../services/api.js';
 import { formatNaira } from '../../utils/currency.js';
 import { formatDateTime } from '../../utils/date.js';
@@ -36,14 +37,14 @@ const TagSearch = ({ onCompleted }) => {
     }
   };
 
-  const handleConfirmComplete = async () => {
+  const handleConfirmComplete = async (completionData) => {
     if (!result) return;
     setCompleting(true);
     try {
-      const res = await chargingApi.updateStatus(result._id, 'Completed');
+      const res = await chargingApi.complete(result._id, completionData);
       setResult(res.data);
       setShowConfirm(false);
-      toast.success(`${result.customerName}'s ${result.gadgetType.toLowerCase()} marked as completed`);
+      toast.success(`${result.customerName}'s charging marked as completed — Total: ${formatNaira(res.data.amount)}`);
       onCompleted?.();
     } catch (err) {
       toast.error(err.message);
@@ -61,7 +62,7 @@ const TagSearch = ({ onCompleted }) => {
         <p className="text-sm font-semibold uppercase tracking-wide">Find customer by tag number</p>
       </div>
       <p className="mt-1 text-sm text-core-300">
-        For the collection point — search a tag, confirm the gadget, mark it complete.
+        For the collection point — search a tag, confirm the gadgets, mark it complete.
       </p>
 
       <form onSubmit={handleSearch} className="mt-4 flex flex-col gap-2 sm:flex-row">
@@ -70,8 +71,8 @@ const TagSearch = ({ onCompleted }) => {
           <input
             value={tag}
             onChange={(e) => setTag(e.target.value)}
-            placeholder="e.g. ROY-025"
-            className="w-full rounded-lg border border-white/10 bg-white/5 py-2.5 pl-9 pr-3 text-sm text-white placeholder:text-core-400 focus:outline-none focus:ring-2 focus:ring-spark-400"
+            placeholder="e.g. 001, ROY-025, A-12"
+            className="w-full rounded-lg border border-white/10 bg-white/5 py-2.5 pl-9 pr-3 text-sm text-white placeholder:text-core-400 focus:outline-none focus:ring-2 focus:ring-spark-400 uppercase font-mono"
           />
         </div>
         <Button type="submit" variant="accent" loading={loading}>
@@ -81,7 +82,7 @@ const TagSearch = ({ onCompleted }) => {
 
       {notFound && (
         <p className="mt-4 rounded-lg bg-red-500/10 px-3.5 py-2.5 text-sm text-red-300">
-          No record found for that tag number. Check the spelling and try again.
+          No record found for tag "{tag}". Check the tag number and try again.
         </p>
       )}
 
@@ -94,10 +95,13 @@ const TagSearch = ({ onCompleted }) => {
                 {result.gadgetType} · {result.option}
               </p>
             </div>
-            <Badge className={`${style.bg} ${style.text}`}>
-              <span className={`h-1.5 w-1.5 rounded-full ${style.dot}`} />
-              {result.status}
-            </Badge>
+            <div className="flex items-center gap-2">
+              <PaymentBadge status={result.paymentStatus || 'Unpaid'} />
+              <Badge className={`${style.bg} ${style.text}`}>
+                <span className={`h-1.5 w-1.5 rounded-full ${style.dot}`} />
+                {result.status}
+              </Badge>
+            </div>
           </div>
           <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-core-300">
             <span className="font-semibold text-spark-400">{formatNaira(result.amount)}</span>
@@ -112,7 +116,7 @@ const TagSearch = ({ onCompleted }) => {
               className="mt-4 w-full sm:w-auto font-semibold bg-emerald-600 hover:bg-emerald-700 text-white"
               onClick={() => setShowConfirm(true)}
             >
-              Mark as Completed
+              Complete & Verify Gadgets
             </Button>
           ) : (
             <p className="mt-4 flex items-center gap-1.5 text-sm font-medium text-emerald-400">
@@ -122,35 +126,14 @@ const TagSearch = ({ onCompleted }) => {
         </div>
       )}
 
-      {/* Confirmation Modal */}
-      {result && (
-        <ConfirmModal
-          open={showConfirm}
-          onClose={() => setShowConfirm(false)}
-          onConfirm={handleConfirmComplete}
-          variant="success"
-          loading={completing}
-          title="Confirm Handover / Completion"
-          message={`Are you sure you want to mark charging as completed for ${result.customerName}?`}
-          confirmText="Mark as Completed"
-          details={
-            <>
-              <div className="flex justify-between">
-                <span className="text-core-500">Tag Number:</span>
-                <span className="font-mono font-bold text-core-900">{result.tagNumber}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-core-500">Gadget:</span>
-                <span className="font-medium text-core-800">{result.gadgetType} ({result.option})</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-core-500">Amount:</span>
-                <span className="font-bold text-emerald-700">{formatNaira(result.amount)}</span>
-              </div>
-            </>
-          }
-        />
-      )}
+      {/* Completion & Verification Modal */}
+      <CompleteChargingModal
+        record={result}
+        open={showConfirm}
+        onClose={() => setShowConfirm(false)}
+        onConfirm={handleConfirmComplete}
+        loading={completing}
+      />
     </div>
   );
 };

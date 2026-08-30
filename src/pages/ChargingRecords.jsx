@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Eye, CheckCircle2, Trash2, ChevronLeft, ChevronRight, ListFilter } from 'lucide-react';
+import { Eye, CheckCircle2, Trash2, ChevronLeft, ChevronRight, ListFilter, CreditCard } from 'lucide-react';
 import DashboardLayout from '../components/layout/DashboardLayout.jsx';
 import Card from '../components/ui/Card.jsx';
 import Input from '../components/ui/Input.jsx';
@@ -10,14 +10,15 @@ import Spinner from '../components/ui/Spinner.jsx';
 import ErrorState from '../components/ui/ErrorState.jsx';
 import EmptyState from '../components/ui/EmptyState.jsx';
 import { Table, THead, Th, Tr, Td } from '../components/ui/Table.jsx';
-import StatusBadge from '../components/charging/StatusBadge.jsx';
+import StatusBadge, { PaymentBadge } from '../components/charging/StatusBadge.jsx';
 import RecordDetailsModal from '../components/charging/RecordDetailsModal.jsx';
+import CompleteChargingModal from '../components/charging/CompleteChargingModal.jsx';
 import ConfirmModal from '../components/ui/ConfirmModal.jsx';
 import { chargingApi } from '../services/api.js';
 import { formatNaira } from '../utils/currency.js';
 import { formatDateTime } from '../utils/date.js';
 import { useToast } from '../context/ToastContext.jsx';
-import { GADGET_TYPES, STATUS_OPTIONS } from '../constants/status.js';
+import { GADGET_TYPES, STATUS_OPTIONS, PAYMENT_STATUS_OPTIONS } from '../constants/status.js';
 
 const DEBOUNCE_MS = 350;
 
@@ -30,6 +31,7 @@ const ChargingRecords = () => {
   const [search, setSearch] = useState('');
   const [gadgetType, setGadgetType] = useState('');
   const [status, setStatus] = useState('');
+  const [paymentStatus, setPaymentStatus] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [page, setPage] = useState(1);
@@ -53,6 +55,7 @@ const ChargingRecords = () => {
         search: search || undefined,
         gadgetType: gadgetType || undefined,
         status: status || undefined,
+        paymentStatus: paymentStatus || undefined,
         dateFrom: dateFrom || undefined,
         dateTo: dateTo || undefined,
       });
@@ -63,7 +66,7 @@ const ChargingRecords = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, search, gadgetType, status, dateFrom, dateTo]);
+  }, [page, search, gadgetType, status, paymentStatus, dateFrom, dateTo]);
 
   // Debounce search/filter changes, then fetch
   useEffect(() => {
@@ -74,14 +77,14 @@ const ChargingRecords = () => {
   // Reset to page 1 whenever a filter changes
   useEffect(() => {
     setPage(1);
-  }, [search, gadgetType, status, dateFrom, dateTo]);
+  }, [search, gadgetType, status, paymentStatus, dateFrom, dateTo]);
 
-  const handleConfirmComplete = async () => {
+  const handleConfirmComplete = async (completionData) => {
     if (!recordToComplete) return;
     setCompleting(true);
     try {
-      await chargingApi.updateStatus(recordToComplete._id, 'Completed');
-      toast.success(`${recordToComplete.customerName} marked as completed`);
+      const res = await chargingApi.complete(recordToComplete._id, completionData);
+      toast.success(`${recordToComplete.customerName} completed — Total: ${formatNaira(res.data.amount)}`);
       setRecordToComplete(null);
       setSelected(null);
       load();
@@ -89,6 +92,17 @@ const ChargingRecords = () => {
       toast.error(err.message);
     } finally {
       setCompleting(false);
+    }
+  };
+
+  const handleTogglePayment = async (record) => {
+    const nextStatus = record.paymentStatus === 'Paid' ? 'Unpaid' : 'Paid';
+    try {
+      await chargingApi.updatePayment(record._id, nextStatus);
+      toast.success(`${record.customerName} payment marked as ${nextStatus}`);
+      load();
+    } catch (err) {
+      toast.error(err.message);
     }
   };
 
@@ -111,17 +125,18 @@ const ChargingRecords = () => {
     setSearch('');
     setGadgetType('');
     setStatus('');
+    setPaymentStatus('');
     setDateFrom('');
     setDateTo('');
   };
 
-  const hasFilters = search || gadgetType || status || dateFrom || dateTo;
+  const hasFilters = search || gadgetType || status || paymentStatus || dateFrom || dateTo;
 
   return (
     <DashboardLayout title="Charging Records">
       <div className="space-y-5">
         <Card>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
             <div className="sm:col-span-2 lg:col-span-2">
               <Input
                 label="Search"
@@ -143,6 +158,13 @@ const ChargingRecords = () => {
               value={status}
               onChange={(e) => setStatus(e.target.value)}
               options={STATUS_OPTIONS.map((s) => ({ value: s, label: s }))}
+            />
+            <Select
+              label="Payment"
+              placeholder="All payments"
+              value={paymentStatus}
+              onChange={(e) => setPaymentStatus(e.target.value)}
+              options={PAYMENT_STATUS_OPTIONS.map((p) => ({ value: p, label: p }))}
             />
             <div className="grid grid-cols-2 gap-2">
               <Input type="date" label="From" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
@@ -186,6 +208,7 @@ const ChargingRecords = () => {
                 <Th>Gadget</Th>
                 <Th>Option</Th>
                 <Th>Amount</Th>
+                <Th>Payment</Th>
                 <Th>Status</Th>
                 <Th>Date/Time</Th>
                 <Th className="text-right">Actions</Th>
@@ -202,7 +225,24 @@ const ChargingRecords = () => {
                     <Td className="font-mono text-xs text-core-500">{r.tagNumber}</Td>
                     <Td>{r.gadgetType}</Td>
                     <Td className="text-core-500">{r.option}</Td>
-                    <Td className="font-semibold text-core-800">{formatNaira(r.amount)}</Td>
+                    <Td>
+                      <span className="font-semibold text-core-800">{formatNaira(r.amount)}</span>
+                      {r.originalAmount && r.amount < r.originalAmount ? (
+                        <span className="ml-1 text-[11px] text-core-400 line-through">
+                          {formatNaira(r.originalAmount)}
+                        </span>
+                      ) : null}
+                    </Td>
+                    <Td>
+                      <button
+                        type="button"
+                        onClick={() => handleTogglePayment(r)}
+                        title={`Click to mark as ${r.paymentStatus === 'Paid' ? 'Unpaid' : 'Paid'}`}
+                        className="transition-transform hover:scale-105"
+                      >
+                        <PaymentBadge status={r.paymentStatus || 'Unpaid'} />
+                      </button>
+                    </Td>
                     <Td><StatusBadge status={r.status} /></Td>
                     <Td className="whitespace-nowrap text-core-500">{formatDateTime(r.createdAt)}</Td>
                     <Td>
@@ -217,7 +257,7 @@ const ChargingRecords = () => {
                         {r.status !== 'Completed' && (
                           <button
                             onClick={() => setRecordToComplete(r)}
-                            title="Mark as completed"
+                            title="Complete & verify gadgets"
                             className="rounded-md p-1.5 text-core-400 hover:bg-emerald-50 hover:text-emerald-600"
                           >
                             <CheckCircle2 size={16} />
@@ -279,37 +319,17 @@ const ChargingRecords = () => {
           setSelected(null);
           setRecordToComplete(rec);
         }}
+        onTogglePayment={handleTogglePayment}
         completing={completing}
       />
 
-      {/* Mark As Completed Confirmation Modal */}
-      <ConfirmModal
+      {/* Mark As Completed & Gadget Verification Modal */}
+      <CompleteChargingModal
+        record={recordToComplete}
         open={!!recordToComplete}
         onClose={() => setRecordToComplete(null)}
         onConfirm={handleConfirmComplete}
-        variant="success"
         loading={completing}
-        title="Confirm Collection / Completion"
-        message={`Are you sure you want to mark charging as completed for ${recordToComplete?.customerName}?`}
-        confirmText="Mark as Completed"
-        details={
-          recordToComplete && (
-            <>
-              <div className="flex justify-between">
-                <span className="text-core-500">Tag Number:</span>
-                <span className="font-mono font-bold text-core-900">{recordToComplete.tagNumber}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-core-500">Gadget(s):</span>
-                <span className="font-semibold text-core-800">{recordToComplete.gadgetType}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-core-500">Amount:</span>
-                <span className="font-bold text-emerald-700">{formatNaira(recordToComplete.amount)}</span>
-              </div>
-            </>
-          )
-        }
       />
 
       {/* Delete Record Confirmation Modal */}

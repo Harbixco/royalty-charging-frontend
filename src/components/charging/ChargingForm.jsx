@@ -4,7 +4,6 @@ import {
   CheckCircle2,
   Plus,
   Trash2,
-  RefreshCw,
   Smartphone,
   Laptop,
   Monitor,
@@ -41,7 +40,7 @@ const ChargingForm = ({ onCreated }) => {
   const [pricingLoading, setPricingLoading] = useState(true);
   const [customerName, setCustomerName] = useState('');
   const [tagNumber, setTagNumber] = useState('');
-  const [tagLoading, setTagLoading] = useState(false);
+  const [paymentStatus, setPaymentStatus] = useState('Unpaid');
   const [items, setItems] = useState([createEmptyItem()]);
   const [notes, setNotes] = useState('');
   const [errors, setErrors] = useState({});
@@ -61,25 +60,8 @@ const ChargingForm = ({ onCreated }) => {
     }
   };
 
-  // Fetch automatic next tag
-  const fetchNextTag = async () => {
-    try {
-      setTagLoading(true);
-      const res = await chargingApi.getNextTag();
-      if (res.data?.tagNumber) {
-        setTagNumber(res.data.tagNumber);
-      }
-    } catch (err) {
-      // If fetching next tag fails, fallback to ROY-001
-      setTagNumber((prev) => prev || 'ROY-001');
-    } finally {
-      setTagLoading(false);
-    }
-  };
-
   useEffect(() => {
     fetchPricing();
-    fetchNextTag();
   }, []);
 
   // Map for quick pricing lookup
@@ -206,18 +188,20 @@ const ChargingForm = ({ onCreated }) => {
       const res = await chargingApi.create({
         customerName: customerName.trim(),
         tagNumber: tagNumber.trim(),
+        paymentStatus,
         items: payloadItems,
         notes: notes.trim() || undefined,
       });
 
-      toast.success(`Record created for ${res.data.customerName} — ${formatNaira(res.data.amount)}`);
+      toast.success(`Record created for ${res.data.customerName} — ${formatNaira(res.data.amount)} (${paymentStatus})`);
       
-      // Reset form and fetch fresh next tag
+      // Reset form
       setCustomerName('');
+      setTagNumber('');
+      setPaymentStatus('Unpaid');
       setItems([createEmptyItem()]);
       setNotes('');
       setErrors({});
-      fetchNextTag();
 
       onCreated?.(res.data);
     } catch (err) {
@@ -230,7 +214,7 @@ const ChargingForm = ({ onCreated }) => {
   return (
     <Card>
       <form onSubmit={handleSubmit} className="space-y-6" noValidate>
-        {/* Customer & Automatic Tag */}
+        {/* Customer & Tag Number */}
         <div className="grid gap-5 sm:grid-cols-2">
           <Input
             label="Customer Name"
@@ -244,37 +228,50 @@ const ChargingForm = ({ onCreated }) => {
             error={errors.customerName}
           />
 
-          <div>
-            <div className="mb-1.5 flex items-center justify-between">
-              <label className="block text-sm font-medium text-core-700">Tag Number</label>
-              <span className="inline-flex items-center gap-1 rounded bg-spark-50 px-2 py-0.5 text-xs font-semibold text-spark-700 border border-spark-200">
-                <Zap size={11} /> Auto-assigned
-              </span>
+          <Input
+            label="Tag Number"
+            name="tagNumber"
+            placeholder="e.g. 001, ROY-025, A-12"
+            value={tagNumber}
+            onChange={(e) => {
+              setTagNumber(e.target.value.toUpperCase());
+              setErrors((er) => ({ ...er, tagNumber: undefined }));
+            }}
+            error={errors.tagNumber}
+          />
+        </div>
+
+        {/* Payment Status Selector */}
+        <div className="rounded-xl border border-core-200 bg-core-50/50 p-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-core-800">Payment Status at Drop-off</p>
+              <p className="text-xs text-core-500">Has the customer paid upfront or will they pay upon collection?</p>
             </div>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={tagNumber}
-                onChange={(e) => {
-                  setTagNumber(e.target.value.toUpperCase());
-                  setErrors((er) => ({ ...er, tagNumber: undefined }));
-                }}
-                placeholder="e.g. ROY-001"
-                className={`w-full rounded-lg border px-3.5 py-2.5 text-sm font-mono uppercase text-core-800 focus:outline-none focus:ring-2 focus:ring-core-400 ${
-                  errors.tagNumber ? 'border-red-300 bg-red-50' : 'border-core-200 bg-white'
-                }`}
-              />
+            <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={fetchNextTag}
-                disabled={tagLoading}
-                title="Refresh / Generate Next Tag"
-                className="flex items-center justify-center rounded-lg border border-core-200 bg-core-50 px-3 text-core-600 hover:bg-core-100 hover:text-core-800 disabled:opacity-50"
+                onClick={() => setPaymentStatus('Unpaid')}
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
+                  paymentStatus === 'Unpaid'
+                    ? 'bg-amber-500 text-white border-amber-600 shadow-sm'
+                    : 'bg-white text-core-700 border-core-200 hover:bg-core-100'
+                }`}
               >
-                <RefreshCw size={16} className={tagLoading ? 'animate-spin' : ''} />
+                Unpaid (Pay on collection)
+              </button>
+              <button
+                type="button"
+                onClick={() => setPaymentStatus('Paid')}
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
+                  paymentStatus === 'Paid'
+                    ? 'bg-emerald-600 text-white border-emerald-700 shadow-sm'
+                    : 'bg-white text-core-700 border-core-200 hover:bg-core-100'
+                }`}
+              >
+                Paid on arrival
               </button>
             </div>
-            {errors.tagNumber && <p className="mt-1.5 text-xs font-medium text-red-600">{errors.tagNumber}</p>}
           </div>
         </div>
 

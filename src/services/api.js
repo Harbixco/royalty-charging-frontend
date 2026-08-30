@@ -43,6 +43,8 @@ export const chargingApi = {
   create: (payload) => api.post('/charging', payload),
   update: (id, payload) => api.put(`/charging/${id}`, payload),
   updateStatus: (id, status) => api.patch(`/charging/${id}/status`, { status }),
+  complete: (id, payload) => api.patch(`/charging/${id}/complete`, payload),
+  updatePayment: (id, paymentStatus) => api.patch(`/charging/${id}/payment`, { paymentStatus }),
   remove: (id) => api.delete(`/charging/${id}`),
 };
 
