@@ -1,0 +1,35 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-canvas text-core-800 antialiased;
+    font-feature-settings: 'tnum' on, 'lnum' on;
+  }
+
+  h1, h2, h3, h4 {
+    @apply font-display text-core-800;
+  }
+}
+
+@layer components {
+  /* Signature "charge bar" motif — a small stepped indicator reused in
+     the sidebar mark, stat cards and the Charging status badge to tie
+     the whole app back to its subject: gadgets filling up with power. */
+  .charge-bars {
+    @apply flex items-end gap-[3px];
+  }
+  .charge-bars span {
+    @apply block w-[3px] rounded-full bg-current;
+  }
+}
+
+/* Respect reduced-motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
