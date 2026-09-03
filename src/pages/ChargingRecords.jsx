@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Eye, CheckCircle2, Trash2, ChevronLeft, ChevronRight, ListFilter, CreditCard } from 'lucide-react';
+import { Eye, CheckCircle2, Trash2, ChevronLeft, ChevronRight, ListFilter, CreditCard, Wallet } from 'lucide-react';
 import DashboardLayout from '../components/layout/DashboardLayout.jsx';
 import Card from '../components/ui/Card.jsx';
 import Input from '../components/ui/Input.jsx';
@@ -25,6 +25,7 @@ const DEBOUNCE_MS = 350;
 const ChargingRecords = () => {
   const [records, setRecords] = useState([]);
   const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, totalPages: 1 });
+  const [summary, setSummary] = useState({ totalRevenue: 0, paidRevenue: 0, unpaidRevenue: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -61,6 +62,7 @@ const ChargingRecords = () => {
       });
       setRecords(res.data.records);
       setPagination(res.data.pagination);
+      setSummary(res.data.summary || { totalRevenue: 0, paidRevenue: 0, unpaidRevenue: 0 });
     } catch (err) {
       setError(err.message);
     } finally {
@@ -179,6 +181,94 @@ const ChargingRecords = () => {
             </div>
           )}
         </Card>
+
+        {/* Total Revenue & Filter Metrics Display */}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <Card className="border-spark-500/20 bg-linear-to-br from-white to-spark-50/40 shadow-xs">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <p className="text-xs font-bold uppercase tracking-wider text-core-500">
+                    Total Revenue
+                  </p>
+                  {hasFilters && (
+                    <span className="rounded-full bg-spark-100 px-1.5 py-0.2 text-[10px] font-bold text-spark-700">
+                      Filtered
+                    </span>
+                  )}
+                </div>
+                <p className="mt-1 font-display text-2xl font-bold text-core-900">
+                  {formatNaira(summary.totalRevenue)}
+                </p>
+                <p className="mt-0.5 text-[11px] text-core-500">
+                  {hasFilters ? 'Sum of filtered records' : 'All-time total records revenue'}
+                </p>
+              </div>
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-spark-500/10 text-spark-600">
+                <Wallet size={22} />
+              </div>
+            </div>
+          </Card>
+
+          <Card className="border-emerald-500/20 bg-linear-to-br from-white to-emerald-50/40 shadow-xs">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-emerald-800">
+                  Paid Revenue
+                </p>
+                <p className="mt-1 font-display text-2xl font-bold text-emerald-700">
+                  {formatNaira(summary.paidRevenue)}
+                </p>
+                <p className="mt-0.5 text-[11px] text-emerald-600 font-medium">
+                  {summary.totalRevenue > 0
+                    ? `${Math.round((summary.paidRevenue / summary.totalRevenue) * 100)}% of total collected`
+                    : 'Collected payments'}
+                </p>
+              </div>
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
+                <CheckCircle2 size={22} />
+              </div>
+            </div>
+          </Card>
+
+          <Card className="border-amber-500/20 bg-linear-to-br from-white to-amber-50/40 shadow-xs">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-amber-800">
+                  Unpaid / Pending
+                </p>
+                <p className="mt-1 font-display text-2xl font-bold text-amber-700">
+                  {formatNaira(summary.unpaidRevenue)}
+                </p>
+                <p className="mt-0.5 text-[11px] text-amber-600 font-medium">
+                  Pending collection
+                </p>
+              </div>
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-100 text-amber-700">
+                <CreditCard size={22} />
+              </div>
+            </div>
+          </Card>
+
+          <Card className="border-core-200 shadow-xs">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-core-500">
+                  Matched Records
+                </p>
+                <p className="mt-1 font-display text-2xl font-bold text-core-800">
+                  {pagination.total}
+                </p>
+                <p className="mt-0.5 text-[11px] text-core-400">
+                  {hasFilters ? 'Matching applied criteria' : 'Total records in database'}
+                </p>
+              </div>
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-core-100 text-core-600">
+                <ListFilter size={22} />
+              </div>
+            </div>
+          </Card>
+        </div>
 
         {loading && <Spinner label="Loading charging records…" />}
         {!loading && error && <ErrorState message={error} onRetry={load} />}

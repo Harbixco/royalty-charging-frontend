@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { X } from 'lucide-react';
 
-const Modal = ({ open, onClose, title, children, footer, maxWidth = 'max-w-lg' }) => {
+const Modal = ({ open, onClose, title, children, footer, maxWidth = 'max-w-lg', zIndex = 'z-40' }) => {
   useEffect(() => {
     if (!open) return;
     const onKey = (e) => e.key === 'Escape' && onClose();
@@ -9,14 +9,18 @@ const Modal = ({ open, onClose, title, children, footer, maxWidth = 'max-w-lg' }
     document.body.style.overflow = 'hidden';
     return () => {
       document.removeEventListener('keydown', onKey);
-      document.body.style.overflow = '';
+      // Only restore scroll if no other dialogs are still open
+      const remainingModals = document.querySelectorAll('[role="dialog"]');
+      if (remainingModals.length <= 1) {
+        document.body.style.overflow = '';
+      }
     };
   }, [open, onClose]);
 
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center p-4">
+    <div className={`fixed inset-0 ${zIndex} flex items-center justify-center p-4`}>
       <div className="absolute inset-0 bg-core-900/40 backdrop-blur-sm" onClick={onClose} />
       <div
         role="dialog"
