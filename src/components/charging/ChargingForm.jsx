@@ -12,6 +12,7 @@ import {
   Plug,
   BatteryMedium,
   Check,
+  RotateCcw,
 } from 'lucide-react';
 import Input from '../ui/Input.jsx';
 import Button from '../ui/Button.jsx';
@@ -88,9 +89,8 @@ const ChargingForm = ({ onCreated }) => {
         const availableOptions = getOptionsForGadget(gadgetType);
         let defaultKey = '';
         if (gadgetType === 'Phone') {
-          defaultKey = 'PHONE_WITH_CHARGER';
-        } else if (availableOptions.length === 1) {
-          defaultKey = availableOptions[0].key;
+          const hasWithCharger = availableOptions.some((o) => o.key === 'PHONE_WITH_CHARGER');
+          defaultKey = hasWithCharger ? 'PHONE_WITH_CHARGER' : (availableOptions[0]?.key || '');
         } else if (availableOptions.length > 0) {
           defaultKey = availableOptions[0].key;
         }
@@ -119,13 +119,22 @@ const ChargingForm = ({ onCreated }) => {
 
   // Remove a gadget item
   const handleRemoveItem = (itemId) => {
-    setItems((prev) => {
-      if (prev.length <= 1) {
-        // Reset the single item to empty instead of removing all
-        return [createEmptyItem()];
-      }
-      return prev.filter((item) => item.id !== itemId);
+    setItems((prev) => prev.filter((item) => item.id !== itemId));
+    setErrors((prev) => {
+      const next = { ...prev };
+      delete next[`gadget_${itemId}`];
+      delete next[`option_${itemId}`];
+      return next;
     });
+  };
+
+  // Clear selection on a single gadget item
+  const handleClearItem = (itemId) => {
+    setItems((prev) =>
+      prev.map((item) =>
+        item.id === itemId ? { ...item, gadgetType: '', pricingKey: '' } : item
+      )
+    );
     setErrors((prev) => {
       const next = { ...prev };
       delete next[`gadget_${itemId}`];
@@ -311,16 +320,28 @@ const ChargingForm = ({ onCreated }) => {
                       Gadget #{index + 1}
                     </span>
 
-                    {/* Working Remove Option / Gadget Button */}
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveItem(item.id)}
-                      className="inline-flex items-center gap-1 text-xs font-medium text-red-500 hover:text-red-700 hover:bg-red-50 px-2 py-1 rounded-md transition-colors"
-                      title="Remove this gadget"
-                    >
-                      <Trash2 size={14} />
-                      <span>Remove</span>
-                    </button>
+                    {/* Remove gadget card when multiple items exist, or Clear selection when only 1 item */}
+                    {items.length > 1 ? (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveItem(item.id)}
+                        className="inline-flex items-center gap-1 text-xs font-medium text-red-500 hover:text-red-700 hover:bg-red-50 px-2 py-1 rounded-md transition-colors"
+                        title="Remove this gadget"
+                      >
+                        <Trash2 size={14} />
+                        <span>Remove</span>
+                      </button>
+                    ) : (item.gadgetType || item.pricingKey) ? (
+                      <button
+                        type="button"
+                        onClick={() => handleClearItem(item.id)}
+                        className="inline-flex items-center gap-1 text-xs font-medium text-core-500 hover:text-core-800 hover:bg-core-100 px-2 py-1 rounded-md transition-colors"
+                        title="Clear selection"
+                      >
+                        <RotateCcw size={13} />
+                        <span>Clear</span>
+                      </button>
+                    ) : null}
                   </div>
 
                   {/* Gadget Type Selector Buttons */}

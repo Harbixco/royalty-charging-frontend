@@ -115,7 +115,12 @@ const ChargingRecords = () => {
       await chargingApi.remove(recordToDelete._id);
       toast.success('Charging record deleted successfully');
       setRecordToDelete(null);
-      load();
+      // Rewind to previous page if the last item on current page was deleted
+      if (records.length === 1 && page > 1) {
+        setPage((p) => Math.max(p - 1, 1));
+      } else {
+        load();
+      }
     } catch (err) {
       toast.error(err.message);
     } finally {
@@ -354,9 +359,13 @@ const ChargingRecords = () => {
                           </button>
                         )}
                         <button
-                          onClick={() => setRecordToDelete(r)}
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setRecordToDelete(r);
+                          }}
                           title="Delete record"
-                          className="rounded-md p-1.5 text-core-400 hover:bg-red-50 hover:text-red-600"
+                          className="rounded-md p-1.5 text-core-400 hover:bg-red-50 hover:text-red-600 transition-colors"
                         >
                           <Trash2 size={16} />
                         </button>
@@ -408,6 +417,10 @@ const ChargingRecords = () => {
         onComplete={(rec) => {
           setSelected(null);
           setRecordToComplete(rec);
+        }}
+        onDelete={(rec) => {
+          setSelected(null);
+          setRecordToDelete(rec);
         }}
         onTogglePayment={handleTogglePayment}
         completing={completing}

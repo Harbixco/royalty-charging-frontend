@@ -4,7 +4,7 @@ import Button from '../ui/Button.jsx';
 import StatusBadge, { PaymentBadge } from './StatusBadge.jsx';
 import { formatNaira } from '../../utils/currency.js';
 import { formatDateTime } from '../../utils/date.js';
-import { CheckCircle2, Check, XCircle } from 'lucide-react';
+import { CheckCircle2, Check, XCircle, Trash2 } from 'lucide-react';
 
 const Row = ({ label, value }) => (
   <div className="flex items-center justify-between border-b border-core-50 py-2.5 last:border-0">
@@ -13,7 +13,15 @@ const Row = ({ label, value }) => (
   </div>
 );
 
-const RecordDetailsModal = ({ record, open, onClose, onComplete, onTogglePayment, completing }) => {
+const RecordDetailsModal = ({
+  record,
+  open,
+  onClose,
+  onComplete,
+  onTogglePayment,
+  onDelete,
+  completing,
+}) => {
   if (!record) return null;
 
   return (
@@ -92,17 +100,32 @@ const RecordDetailsModal = ({ record, open, onClose, onComplete, onTogglePayment
         </div>
       </div>
 
-      {record.status !== 'Completed' && (
-        <Button
-          variant="accent"
-          icon={CheckCircle2}
-          className="mt-5 w-full"
-          loading={completing}
-          onClick={() => onComplete(record)}
-        >
-          Mark as Completed
-        </Button>
-      )}
+      <div className="mt-5 flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-2.5">
+        {onDelete ? (
+          <Button
+            type="button"
+            variant="ghost"
+            icon={Trash2}
+            className="text-red-600 hover:bg-red-50 hover:text-red-700 justify-center"
+            onClick={() => onDelete(record)}
+          >
+            Delete Record
+          </Button>
+        ) : <div />}
+
+        {record.status !== 'Completed' && (
+          <Button
+            type="button"
+            variant="accent"
+            icon={CheckCircle2}
+            className="w-full sm:w-auto font-semibold"
+            loading={completing}
+            onClick={() => onComplete(record)}
+          >
+            Mark as Completed
+          </Button>
+        )}
+      </div>
     </Modal>
   );
 };
